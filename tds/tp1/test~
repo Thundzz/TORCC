@@ -1,0 +1,4 @@
+pou = 1;
+poupou = pou + pou;
+pidou = 5;
+poupoupidou = poupou + 2 * pidou - pidou;

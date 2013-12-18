@@ -1,0 +1,22 @@
+; un commentaire
+define i32 @mafonction(i32 %arg) {
+; mafonction est une fonction (globale)
+%x = mul i32 %arg, 2
+; multiplication enti`re, retournant un i32
+e
+%y = add i32 %x , 32
+; addition enti`re
+e
+%z = sub i32 %y , %x
+; soustraction enti`re
+e
+%a = sdiv i32 %z, 4
+; division enti`re
+e
+ret i32 %a
+}
+define i32 @main() {
+; main est une variable globale
+%retval = call i32 @mafonction(i32 42)
+ret i32 0
+}
