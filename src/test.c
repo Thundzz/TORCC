@@ -3,6 +3,6 @@
 void drive ()
 {
 
-  $accel = 1.0;
+  $accel = 1.99999      ;
 
 }
