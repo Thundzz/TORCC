@@ -5,7 +5,7 @@
 #include "y.tab.h"
 
   void yyerror(const char * s){
-    fprintf(stderr, "POUPOUPIDOU%s\n", s);
+    fprintf(stderr, "POUPOUPIDOU : %s\n", s);
   }
 
 
