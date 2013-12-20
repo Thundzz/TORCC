@@ -4,12 +4,13 @@
 #include <string.h>
 #include <errno.h>
 
-
+#include "brutCode.h"
 #include "map.h"
 #include "aux.h"
 #include "torcsVars.h"
 
 #define BUFSIZE 100
+  char error[BUFSIZE] = "";
   int regNum = 1;
   extern int yylineno;
   int yylex ();
@@ -22,9 +23,7 @@
   {
     int newSize = strlen(str) + strlen (toAppend) +1  ;
     str =  realloc (str, newSize) ;
-    //fprintf(stderr,"%d \n",  newSize);
     strncat ( str, toAppend, strlen(toAppend));
-//    free(str);
     free(toAppend);
 
     return (str);
@@ -110,10 +109,11 @@ comparison_expression
 
 expression
 : unary_expression assignment_operator comparison_expression {
-  int val = map_get_val($1);
+  int val = map_get_val($1); 
   if(val == VAL_UNDEF)
   {
-    fprintf(stderr, "error: undeclared identifier %s", $1);
+    sprintf(error, "error: undeclared identifier %s", $1);
+    yyerror(error);
     exit(EXIT_FAILURE);
   }
   else
@@ -121,22 +121,20 @@ expression
 
     char * regBuf = malloc(BUFSIZE * sizeof (char));
     map_set_val( $1, regNum);
-    snprintf(regBuf, BUFSIZE, "%%%d = ", regNum++);
+    snprintf(regBuf, BUFSIZE, "%%reg%d = fadd ", regNum++);
     int rType = map_get_type($1), lType = map_get_type($3);
     if(rType != lType)
     {
-      fprintf(stderr, "%d %d\n", map_get_type("$accel"),  map_get_type($3) );
-      puts($3);
-      fprintf(stderr, "Bouuuuuh (implicit cast not supported (yet)) : assigning a %d to a %d\n", rType, lType);
+      yyerror("implicit cast not supported (yet)");
       exit(EXIT_FAILURE);
     }
     else
     {
-
       char * LLVMRType = typeToLLVM(rType);
       char *left = strFusion( regBuf, LLVMRType);
       left = strFusion(left, strdup(" "));
       $$ = strFusion(strdup("\t") ,strFusion(left, $3));
+      $$ = strFusion($$, strdup(", 1.0"));
 
     }
   }
@@ -250,10 +248,12 @@ external_declaration
 
 function_definition
 : type_name declarator compound_statement {
-
-
+  char parameters[] = "drive(i32 %index, %struct.CarElt* %car, %struct.Situation* %s)";
+  char ctrl[] = "%ctrl = getelementptr %struct.CarElt* %car, i32 0, i32 5";
   char * type = typeToLLVM($1);
-  printf("define %s @%s {\n%s%s%s}\n", type, $2,getLLVMVarLoading() , $3,  getLLVMVarStoring());
+  puts(header);
+  printf("define %s @%s {\n\t%s\n%s%s%s\tret void\n}\n\n", type,  parameters, ctrl, getLLVMVarLoading() , $3,  getLLVMVarStoring());
+  puts(end);
   free(type);
   free($2);free($3); 
  }

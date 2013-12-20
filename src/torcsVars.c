@@ -150,7 +150,7 @@ char * getLLVMVarStoring()
       if (var-> _LLVMRegNum != map_get_val(var->_torcCName)) // Le symbole a été utilisé en écriture
       {
 	char * type = typeToLLVM (var ->_type);
-	sprintf(buff, "\tstore %s %%%d, %s* %%_%d\n", type, map_get_val(var->_torcCName), type, var->_LLVMRegNum);
+	sprintf(buff, "\tstore %s %%reg%d, %s* %%_%d\n", type, map_get_val(var->_torcCName), type, var->_LLVMRegNum);
 	free(type);	  
       }
     }

@@ -1,0 +1,13 @@
+Projet TORCC, par Yacine El Jarrari et Guillaume Rincel
+
+Pour compiler le compilateur :
+     make
+Pour compiler un fichier en pseudo-c décrivant une fonction drive donnant simplement une valeur à $accel :
+     ./compile [fichier] [sortie]
+Le fichier test.c, qui définit simplement une fonction drive affectant une valeur à l'accélération, a été utilisé lors de nos tests.
+
+Notes :
+ - Les arguments de la fonction drive sont ignorés et remplacés par les arguments corrects pour la compatibilité avec TORCS.
+ - Les définitions des structures de TORCS et les prototypes de fonctions pour les manipuler sont également ajoutées au fichier de sortie quoi qu'il arrive.
+ - A l'heure actuelle, le compilateur effectue plus d'opérations que nécessaire : au lieu de stocker directement un valeur dans la case mémoire correspondant à l'accélération, il la stocke dans un registre puis sauve la valeur du registre dans ladite case.
+ - Le code actuel du compilateur, suite à un mauvais compromis entre une intention initiale de faire quelque-chose de rigoureux et la nécessité de rendre quelque-chose qui fonctionne sur l'entrée test.c, est en bonne partie inexploitable (en particulier les actions sémantiques dans grammar.y).
