@@ -36,7 +36,7 @@ char * typeToLLVM (int CType)
     return strdup("void");
     break;
   case TYPE_FLOAT:
-    return strdup("f32");
+    return strdup("float");
     break;
   default:
     fprintf(stderr, "Type : %d  \n", CType);
