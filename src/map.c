@@ -3,23 +3,36 @@
 #include <string.h>
 #include "map.h"
 
+
+
 /* A minimalistic map implementation provided by D.Bonnin and edited by us*/
 
+struct var
+{
+  int val, type, mode;
+};
+
 static char * var_names[MAX_VAR];
-static int var_vals[MAX_VAR];
-static int var_types[MAX_VAR];
-static int var_mode[MAX_VAR];
+static struct var vars[MAX_VAR];
+
+/* static int var_vals[MAX_VAR]; */
+/* static int var_types[MAX_VAR]; */
+/* static int var_mode[MAX_VAR]; */
 
 static int known_var=0;
 
+void var_init(struct var *v)
+{
+    v->val = VAL_UNDEF;
+    v->type = TYPE_UNDEF;
+    v->mode = MODE_RDWR;
+}
 void map_init(){
   int i;
   known_var = 0;
   for(i=0; i<MAX_VAR; i++){
     var_names[i] = NULL;
-    var_vals[i] = VAL_UNDEF;
-    var_types[i] = TYPE_UNDEF;
-    var_mode[i] = MODE_RDWR;
+    var_init(&vars[i]);
   }
 }
 
@@ -52,71 +65,73 @@ int get_position(char * x){
     return f;
 }
 
+struct var * map_get(char * x)
+{
+  int pos = get_position(x);
+  if(pos < known_var && strcmp(var_names[pos], x) == 0)
+    return &vars[pos];
+  else
+    return NULL;
+}
 
 int map_get_val(char * x){
-  int pos = get_position(x);
-  if(pos < known_var && strcmp(var_names[pos], x) == 0)
-    return var_vals[pos];
-  else
-    return 0;
+  struct var *v = map_get(x);
+  if(v == NULL)
+    return VAL_UNDEF;
+  else return v->val;
 }
-
-
 
 int map_get_type(char * x){
-  int pos = get_position(x);
-  if(pos < known_var && strcmp(var_names[pos], x) == 0)
-    return var_types[pos];
-  else
-    return TYPE_UNDEF ;
+  struct var *v = map_get(x);
+  if(v == NULL)
+    return TYPE_UNDEF;
+  else return v->type;
 }
 
-void map_set_val(char * x, int v){
-  int pos = get_position(x);
-  if(var_names[pos] != NULL && strcmp(x, var_names[pos]) == 0){ // value already in the table
-    var_vals[pos] = v;
-  }
-  else{
-    if(known_var < MAX_VAR){
-      int i;
-      for(i=known_var; i>pos; i--){
-	var_names[i] = var_names[i-1];
-	var_vals[i] = var_vals[i-1];
-	var_types[i] = var_types[i-1];
-	var_mode[i] = var_mode[i -1 ]; 
-      }
-      var_names[pos] = strdup(x);
-      var_vals[pos] = v;
-      known_var++;
-    }
-    else {
-      fprintf(stderr, "Too many variables\n");
-      exit(1);
-    }      
-  }
+int map_get_mode(char * x){
+  struct var *v = map_get(x);
+  if(v == NULL)
+    return TYPE_UNDEF;
+  else return v->mode;
 }
 
-void map_set_type(char * x, int v){
-  int pos = get_position(x);
-  if(var_names[pos] != NULL && strcmp(x, var_names[pos]) == 0){ // value already in the table
-    var_types[pos] = v;
-  }
-  else{
-    if(known_var < MAX_VAR){
-      int i;
-      for(i=known_var; i>pos; i--){
-	var_names[i] = var_names[i-1];
-	var_types[i] = var_types[i-1];
-	var_vals[i] = var_vals[i-1];
-	var_mode[i] = var_mode[i -1 ]; 
-      }
-      var_names[pos] = strdup(x);
-      var_types[pos] = v;
-      known_var++;
-    }
-    else {
-      fprintf(stderr, "Too many variables\n");
-      exit(1);
-    }      
-  }
+struct var * map_getOrCreateVar(char *x)
+{
+   int pos = get_position(x);
+   if(var_names[pos] != NULL && strcmp(x, var_names[pos]) == 0){ // value already in the table
+     return &vars[pos];
+   }
+   else{
+     if(known_var < MAX_VAR){
+       int i;
+       for(i=known_var; i>pos; i--){
+	 var_names[i] = var_names[i-1];
+	 vars[i] = vars[i-1]; 
+       }
+       var_names[pos] = strdup(x);
+       known_var++;
+       var_init(&vars[pos]);
+       return &vars[pos];
+     }
+     else {
+       fprintf(stderr, "Too many variables\n");
+       exit(1);
+     }      
+   }
 }
+
+void map_set_val(char * x, int val){
+  struct var * v = map_getOrCreateVar(x);
+  v->val = val;
+}
+
+void map_set_type(char * x, int type){
+  struct var * v = map_getOrCreateVar(x);
+  v->type = type;
+}
+
+void map_set_mode(char * x, int mode){
+  struct var * v = map_getOrCreateVar(x);
+  v->mode = mode;
+}
+
