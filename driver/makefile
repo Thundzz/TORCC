@@ -5,7 +5,7 @@ LDFLAGS         = -fPIC
 
 all:$(TARGET)
 
-lib/enseirBOT.so:objs/drive.o objs/driver.o
+lib/enseirBOT.so:objs/mydrive.o objs/driver.o
 	gcc -shared -o $@ $^ -fPIC
 objs/%.o:src/%.cpp
 	g++ $(CPPFLAGS) -fPIC -c -o $@ $^
@@ -15,6 +15,9 @@ objs/%.o:src/%.ll
 
 install:$(TARGET)
 	cp $^ ../../../res/lib/enseirBOT/enseirBOT.so
+
+cp:$(TARGET)
+	cp $^ /usr/local/lib/torcs/drivers/enseirBOT
 
 clean:
 	rm lib/* objs/*
