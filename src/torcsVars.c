@@ -29,16 +29,16 @@ struct TorcsVar rdWrVars [RDWRVARNUM];
 char * typeToLLVM (int CType)
 {
   switch(CType){
-  case TYPE_INT:
-    return strdup("i32");
+    case TYPE_INT:
+    return "i32";
     break;
-  case TYPE_VOID:
-    return strdup("void");
+    case TYPE_VOID:
+    return "void";
     break;
-  case TYPE_FLOAT:
-    return strdup("float");
+    case TYPE_FLOAT:
+    return "float";
     break;
-  default:
+    default:
     fprintf(stderr, "Type : %d  \n", CType);
     perror ("Wrong type given somewhere.");
     exit(EXIT_FAILURE);
@@ -118,19 +118,19 @@ char * getLLVMVarLoading()
       var = &rdOnlyVars[i1];
       if (1) // Il faudra tester si le symbole a été utilisé
       {
-	sprintf(buff, "\t%%_%d = %s\n", var->_LLVMRegNum, var->_LLVMLoad);
-      }
-    }	 
-    for (i2 =0; i2< RDWRVARNUM; i2++)
+       sprintf(buff, "\t%%_%d = %s\n", var->_LLVMRegNum, var->_LLVMLoad);
+     }
+   }	 
+   for (i2 =0; i2< RDWRVARNUM; i2++)
+   {
+    var = &rdWrVars[i2];
+    if(1)
     {
-      var = &rdWrVars[i2];
-      if(1)
-      {
-	sprintf(buff, "\t%%_%d = %s\n", var->_LLVMRegNum, var->_LLVMLoad);
-      }
-    }	 
-  }
-  return (buff);
+     sprintf(buff, "\t%%_%d = %s\n", var->_LLVMRegNum, var->_LLVMLoad);
+   }
+ }	 
+}
+return (buff);
 }
 char * getLLVMVarStoring()
 {
@@ -149,13 +149,13 @@ char * getLLVMVarStoring()
       var = &rdWrVars[i];
       if (var-> _LLVMRegNum != map_get_val(var->_torcCName)) // Le symbole a été utilisé en écriture
       {
-	char * type = typeToLLVM (var ->_type);
-	sprintf(buff, "\tstore %s %%reg%d, %s* %%_%d\n", type, map_get_val(var->_torcCName), type, var->_LLVMRegNum);
-	free(type);	  
-      }
-    }
-  }
-  return (buff);
+       char * type = typeToLLVM (var ->_type);
+       sprintf(buff, "\tstore %s %%reg%d, %s* %%_%d\n", type, map_get_val(var->_torcCName), type, var->_LLVMRegNum);
+       free(type);	  
+     }
+   }
+ }
+ return (buff);
 }
 
 

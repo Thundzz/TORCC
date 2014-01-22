@@ -1,0 +1,17 @@
+/* Ceci est un input possible pour obtenir le fichier .ll . Toute fonction non definie est supposee 
+definie ailleurs. */
+/* Cette fonction conduit la voiture, la gardant au milieu de la route. */
+void drive() {
+	float angle,nangle;
+	float posmid,width,corr,cangle;
+	angle = road_angle() - car_angle();
+	nangle = norm_pi_pi(angle);
+	posmid = pos_to_middle();
+	width= track_seg_width(0);
+        corr = posmid / width ; 
+	cangle = nangle - corr;
+        $steer = cangle;
+        $accelCmd = 0.75; /* on appuie a 75% sur l'accelerateur */
+	$gearCmd = 1; /* on reste en 1ere vitesse */
+}
+

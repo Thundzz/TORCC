@@ -19,7 +19,7 @@ int isLeaf(const string * s)
 }
 
 
-void reportError(char * c)
+void reportStringError(char * c)
 {
 	fprintf(stderr, "Error in string manipulation : %s. \n", c);
 	exit(EXIT_FAILURE);
@@ -31,33 +31,49 @@ string * allocString()
 	string * s = malloc (sizeof(string));
 	if (s == NULL)
 	{
-		reportError("memory allocation denied");
+		reportStringError("memory allocation denied");
 	}
 	s->s = NULL;
 	s->left =  s-> right = NULL;
 	return s;
 }
 
-string * newString(const char * c)
+string * newString(char * c)
 {
-	string * s =allocString();
-	s->s = strdup(c);
-	if (s == NULL)
+	if(c == NULL)
+		return NULL;
+	else
 	{
-		reportError("Error at duplication");
+		string * s =allocString();
+		s->s = strdup(c);
+		if (s == NULL)
+		{
+			reportStringError("Error at duplication");
+		}
+		return s;
 	}
-	return s;
 }
 
-string * concatString(const string * left,const string * right)
+string * concatString(string * left,string * right)
 {
-	string * s = allocString();
-	s->left = left;
-	s->right = right;
-	return (s);
+	if (left == NULL)
+	{
+		return right;
+	}
+	else if (right == NULL)
+	{
+		return(left);
+	}
+	else
+	{
+		string * s = allocString();
+		s->left = left;
+		s->right = right;
+		return (s);
+	}
 }
 
-string * appendString(const string * left,const char * right)
+string * appendString(string * left, char * right)
 {
 	return (concatString(left, newString(right)));
 }
@@ -65,6 +81,10 @@ string * appendString(const string * left,const char * right)
 
 void destroyString(string * s)
 {
+	if (s == NULL)
+	{
+		return;
+	}
 	if(isLeaf(s))
 	{
 		free(s->s);
@@ -79,9 +99,13 @@ void destroyString(string * s)
 
 void printString(FILE * file, const string * str )
 {
+	if (str == NULL)
+	{
+		return;
+	}
 	if(isLeaf(str))
 	{
-	  fputs(str->s, file);
+		fputs(str->s, file);
 	}
 	else
 	{

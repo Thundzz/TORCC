@@ -10,9 +10,9 @@ typedef struct String string;
 /* Function declaration */
 
 
-string * newString(const char * c);
-string * concatString(const string * left,const string * right);
-string * appendString(const string * left,const char * right);
+string * newString(char * c);
+string * concatString(string * left, string * right);
+string * appendString(string * left, char * right);
 
 void destroyString(string * s);
 void printString(FILE * file, const string * str );

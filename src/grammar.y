@@ -5,19 +5,36 @@
 #include <errno.h>
 
 #include "brutCode.h"
-#include "map.h"
 #include "aux.h"
 #include "torcsVars.h"
 
-#define BUFSIZE 100
+#include "hashtable.h"
+#include "symbol.h"
+#include "expression.h"
+#include "type.h"
+#include "str.h"
+
+
+#define BUFSIZE 1024
+
+
+
+
   char error[BUFSIZE] = "";
+  char buffer[BUFSIZE] = "";
   int regNum = 1;
   extern int yylineno;
   int yylex ();
   int yyerror ();
 
+  hashtable_t * table;
 
 
+  void reportError()
+  {
+    yyerror(error);
+    exit(EXIT_FAILURE);
+  }
 
   char * strFusion (char * str, char * toAppend)
   {
@@ -28,49 +45,139 @@
 
     return (str);
   }
+  struct symbol_s * getSymbol (char * name)
+  {
+    struct symbol_s * s;
+    if (NULL == (s = ht_get(table, name)))
+    { 
+      sprintf(error, "error: Undeclared identifier %s", name);
+      reportError();
+    }
+    return (s);
+  }
+
 
   %}
 
-%token <str> IDENTIFIER
-%token <str> CONSTANTF
-%token <str> CONSTANTI
-%token INC_OP DEC_OP LE_OP GE_OP EQ_OP NE_OP
-%token SUB_ASSIGN MUL_ASSIGN ADD_ASSIGN
-%token TYPE_NAME
-%token <nat> INT FLOAT VOID
-%token IF ELSE WHILE RETURN FOR
 
-%type <nat> type_name
-%type <str> compound_statement declarator postfix_expression unary_expression expression  parameter_list primary_expression multiplicative_expression additive_expression comparison_expression expression_statement statement statement_list
 
-%union{
-  char * str;
-  float flt;
-  int nat;
+  %error-verbose
+  %union{
+    char * str;
+    float flt;
+    int nat;
+    struct symbol_s * sym;
+    struct expression_s * expr;
+  }
+
+
+  %token <str> IDENTIFIER
+  %token <str> CONSTANTF
+  %token <str> CONSTANTI
+  %token INC_OP DEC_OP LE_OP GE_OP EQ_OP NE_OP
+  %token SUB_ASSIGN MUL_ASSIGN ADD_ASSIGN
+  %token TYPE_NAME
+  %token <nat> INT FLOAT VOID
+  %token IF ELSE WHILE RETURN FOR
+
+  %type <nat> type_name
+  %type <str> compound_statement declarator postfix_expression unary_expression parameter_list multiplicative_expression additive_expression comparison_expression expression_statement statement statement_list
+  %type <expr> primary_expression expression
+
+
+
+
+  %start program
+  %%
+
+  primary_expression
+  : IDENTIFIER { 
+    $$ = createExpr();
+    $$->isSymbol= 1;
+    struct symbol_s * s;
+    s = getSymbol($1);
+    $$->type = s->type;
+    $$->regNum = s->regNum;
+    free($1);
+  }
+
+  | CONSTANTI {
+    $$ = createExpr();
+    $$-> type = TYPE_INT;
+    $$->isConstant = 1;
+    $$->intConstVal = atoi($1);
+    free($1); 
+  }
+
+  | CONSTANTF {
+   $$ = createExpr();
+   $$-> type = TYPE_FLOAT;
+   $$->isConstant = 1;
+   $$->floatConstVal = atof($1);
+   free($1); 
  }
 
-%start program
-%%
-
-
-primary_expression
-: IDENTIFIER { $$ = $1 ;}
-| CONSTANTI { $$ = $1 ; map_set_type($1, TYPE_INT);  }
-| CONSTANTF { $$ = $1 ; map_set_type($1, TYPE_FLOAT); }
-| '(' expression ')' {}
-| IDENTIFIER '(' ')'
-| IDENTIFIER '(' argument_expression_list ')'
-| IDENTIFIER INC_OP
-| IDENTIFIER DEC_OP
+ | '(' expression ')' { $$ = $2; }
+ | IDENTIFIER '(' ')' { 
+   $$ = createExpr();
+   struct symbol_s * s;
+   s = getSymbol($1);
+   $$->regNum = regNum;
+   sprintf(buffer, "\t %%r%d = call %s @%s()\n", regNum++, typeToLLVM(s->type) ,s->name);
+   $$-> code = newString(buffer);
+   free($1);
+  //TODO : Ajouter la déclaration de la fonction  à la fin du fichier.
+ }
+| IDENTIFIER '(' argument_expression_list ')' {/*TODO*/}
+ | IDENTIFIER INC_OP {
+   $$ = createExpr();
+   struct symbol_s * s = getSymbol($1);
+   $$->regNum = s->regNum;
+   switch(s->type)
+   {
+    case TYPE_INT:
+    sprintf(buffer, "\t %%r%d = add i32 1, %%r%d \n", regNum, s->regNum);
+    break;
+    case TYPE_FLOAT:
+    sprintf(buffer, "\t %%r%d = fadd f32 1, %%r%d \n", regNum, s->regNum);
+    break;
+    default:
+    sprintf(error, "Identifier %s has invalid type for incrementation.", s->name);
+    reportError();
+  } 
+  s->regNum = regNum++;
+  $$->code = newString(buffer);
+  free($1);
+}
+| IDENTIFIER DEC_OP {
+  $$ = createExpr();
+  struct symbol_s * s = getSymbol($1);
+  $$->regNum = s->regNum;
+  switch(s->type)
+  {
+    case TYPE_INT:
+    sprintf(buffer, "\t %%r%d = sub i32 %%r%d, 1 \n", regNum, s->regNum);
+    break;
+    case TYPE_FLOAT:
+    sprintf(buffer, "\t %%r%d = fsub f32 %%r%d, 1 \n", regNum, s->regNum);
+    break;
+    default:
+    sprintf(error, "Identifier %s has invalid type for decrementation.", s->name);
+    reportError();
+  } 
+  s->regNum = regNum++;
+  $$->code = newString(buffer);
+  free($1);
+}
 ;
 
 postfix_expression
-: primary_expression {$$ = $1;}
-| postfix_expression '[' expression ']'
+  : primary_expression {/*$$ = $1;*/}
+| postfix_expression '[' expression ']' 
 ;
 
 argument_expression_list
-: expression
+: expression 
 | argument_expression_list ',' expression
 ;
 
@@ -109,203 +216,215 @@ comparison_expression
 
 expression
 : unary_expression assignment_operator comparison_expression {
-  int val = map_get_val($1); 
-  if(val == VAL_UNDEF)
-  {
-    sprintf(error, "error: undeclared identifier %s", $1);
-    yyerror(error);
-    exit(EXIT_FAILURE);
-  }
-  else
-  {
-
-    char * regBuf = malloc(BUFSIZE * sizeof (char));
-    map_set_val( $1, regNum);
-    snprintf(regBuf, BUFSIZE, "%%reg%d = fadd ", regNum++);
-    int rType = map_get_type($1), lType = map_get_type($3);
-    if(rType != lType)
+    /*
+    int val = map_get_val($1); 
+    if(val == VAL_UNDEF)
     {
-      yyerror("implicit cast not supported (yet)");
+      sprintf(error, "error: undeclared identifier %s", $1);
+      yyerror(error);
       exit(EXIT_FAILURE);
     }
     else
     {
-      char * LLVMRType = typeToLLVM(rType);
-      char *left = strFusion( regBuf, LLVMRType);
-      left = strFusion(left, strdup(" "));
-      $$ = strFusion(strdup("\t") ,strFusion(left, $3));
-      $$ = strFusion($$, strdup(", 1.0"));
+      
+      char * regBuf = malloc(BUFSIZE * sizeof (char));
+      map_set_val( $1, regNum);
+      snprintf(regBuf, BUFSIZE, "%%reg%d = fadd ", regNum++);
+      int rType = map_get_type($1), lType = map_get_type($3);
+      if(rType != lType)
+      {
+        yyerror("implicit cast not supported (yet)");
+        exit(EXIT_FAILURE);
+      }
+      else
+      {
+        char * LLVMRType = typeToLLVM(rType);
+        char *left = strFusion( regBuf, LLVMRType);
+        left = strFusion(left, strdup(" "));
+        $$ = strFusion(strdup("\t") ,strFusion(left, $3));
+        $$ = strFusion($$, strdup(", 1.0"));
 
+      }
+      
     }
+  */
   }
- }
-| comparison_expression
-;
+  | comparison_expression
+  ;
 
-assignment_operator
-: '='
-| MUL_ASSIGN
-| ADD_ASSIGN
-| SUB_ASSIGN
-;
+  assignment_operator
+  : '='
+  | MUL_ASSIGN
+  | ADD_ASSIGN
+  | SUB_ASSIGN
+  ;
 
-declaration
-: type_name declarator_list ';'
-;
+  declaration
+  : type_name declarator_list ';'
+  ;
 
-declarator_list
-: declarator
-| declarator_list ',' declarator
-;
+  declarator_list
+  : declarator
+  | declarator_list ',' declarator
+  ;
 
-type_name
-: VOID {$$ = TYPE_VOID;}
-| INT    {$$ = TYPE_INT;}
-| FLOAT  {$$ = TYPE_FLOAT;}
-;
+  type_name
+  : VOID {$$ = TYPE_VOID;}
+  | INT    {$$ = TYPE_INT;}
+  | FLOAT  {$$ = TYPE_FLOAT;}
+  ;
 
-declarator
-: IDENTIFIER  {$$ = $1;}
-| '(' declarator ')' {}
-| declarator '[' CONSTANTI ']'
-| declarator '[' ']'
-| declarator '(' parameter_list ')' {$$ =  $1;}
-| declarator '(' ')'  {
-  $$ = strFusion ( strFusion ($1, strdup("(")), strdup(")"));
+  declarator
+  : IDENTIFIER  {$$ = $1;}
+  | '(' declarator ')' {}
+  | declarator '[' CONSTANTI ']'
+  | declarator '[' ']'
+  | declarator '(' parameter_list ')' {$$ =  $1;}
+  | declarator '(' ')'  {
+    $$ = strFusion ( strFusion ($1, strdup("(")), strdup(")"));
   }
-;
+  ;
 
+  parameter_list
+  : parameter_declaration {}
+  | parameter_list ',' parameter_declaration
+  ;
 
+  parameter_declaration
+  : type_name declarator
+  ;
 
-parameter_list
-: parameter_declaration {}
-| parameter_list ',' parameter_declaration
-;
+  statement
+  : compound_statement {$$ = $1;}
+  | expression_statement { $$ = $1;}
+  | selection_statement {}
+  | iteration_statement {}
+  | jump_statement {}
+  ;
 
-parameter_declaration
-: type_name declarator
-;
-
-statement
-: compound_statement {$$ = $1;}
-| expression_statement { $$ = $1;}
-| selection_statement {}
-| iteration_statement {}
-| jump_statement {}
-;
-
-compound_statement
-: '{' '}' {}
-| '{' statement_list '}'  {
-  $$ = $2;
+  block_overture
+  : '{' {
+  //engloberTable();
   }
-| '{' declaration_list statement_list '}' {}
-;
 
-declaration_list
-: declaration
-| declaration_list declaration
-;
-
-statement_list
-: statement {$$ = $1 ;}
-| statement_list statement { 
- }
-;
-
-expression_statement
-: ';'  {}
-| expression ';' {
-
-  $$ = strFusion ($1 , strdup("\n"));
+  block_underture
+  : '}' {
+  //degloberTable();
   }
-;
 
-selection_statement
-: IF '(' expression ')' statement
-| IF '(' expression ')' statement ELSE statement
-| FOR '(' expression_statement expression_statement expression ')' statement
-;
+  compound_statement
+  : block_overture block_underture {}
+  | block_overture statement_list block_underture  {
+    $$ = $2;
+  }
+  | block_overture declaration_list statement_list block_underture {}
+  ;
 
-iteration_statement
-: WHILE '(' expression ')' statement
-;
+  declaration_list
+  : declaration
+  | declaration_list declaration
+  ;
 
-jump_statement
-: RETURN ';'
-| RETURN expression ';'
-;
+  statement_list
+  : statement {$$ = $1 ;}
+  | statement_list statement { 
+  }
+  ;
 
-program
-: external_declaration
-| program external_declaration
-;
+  expression_statement
+  : ';'  {}
+  | expression ';' {
 
-external_declaration
-: function_definition
-| declaration
-;
+    /*$$ = strFusion ($1 , strdup("\n"));*/
+  }
+  ;
 
-function_definition
-: type_name declarator compound_statement {
-  char parameters[] = "drive(i32 %index, %struct.CarElt* %car, %struct.Situation* %s)";
-  char ctrl[] = "%ctrl = getelementptr %struct.CarElt* %car, i32 0, i32 5";
-  char * type = typeToLLVM($1);
-  puts(header);
-  printf("define %s @%s {\n\t%s\n%s%s%s\tret void\n}\n\n", type,  parameters, ctrl, getLLVMVarLoading() , $3,  getLLVMVarStoring());
-  puts(end);
-  free(type);
-  free($2);free($3); 
- }
-;
+  selection_statement
+  : IF '(' expression ')' statement
+  | IF '(' expression ')' statement ELSE statement
+  | FOR '(' expression_statement expression_statement expression ')' statement
+  ;
 
-%%
+  iteration_statement
+  : WHILE '(' expression ')' statement
+  ;
+
+  jump_statement
+  : RETURN ';'
+  | RETURN expression ';'
+  ;
+
+  program
+  : external_declaration
+  | program external_declaration
+  ;
+
+  external_declaration
+  : function_definition
+  | declaration
+  ;
+
+  function_definition
+  : type_name declarator compound_statement {
+    char parameters[] = "drive(i32 %index, %struct.CarElt* %car, %struct.Situation* %s)";
+    char ctrl[] = "%ctrl = getelementptr %struct.CarElt* %car, i32 0, i32 5";
+    char * type = typeToLLVM($1);
+    //puts(header);
+    printf("define %s @%s {\n\t%s\n%s%s%s\tret void\n}\n\n", type,  parameters, ctrl, getLLVMVarLoading() ,$3 ,  /*getLLVMVarStoring()*/ ""); 
+    /*TODO : adapter LLVMVARSTORING pour utiliser la hashtable au lieu de la map*/
+    //puts(end);
+    free($2);free($3); 
+  }
+  ;
+
+  %%
 #include <stdio.h>
 #include <string.h>
 
-extern int column;
-extern int yylineno;
-extern FILE *yyin;
+  extern int column;
+  extern int yylineno;
+  extern FILE *yyin;
 
-char *file_name = NULL;
-
-
-int yyerror (char *s) {
-  fflush (stdout);
-  fprintf (stderr, "%s:%d:%d: %s\n", file_name, yylineno, column, s);
-  return 0;
-}
+  char *file_name = NULL;
 
 
-int main (int argc, char *argv[]) {
-  FILE *input = NULL;
+  int yyerror (char *s) {
+    fflush (stdout);
+    fprintf (stderr, "%s:%d:%d: %s\n", file_name, yylineno, column, s);
+    return 0;
+  }
 
 
+  int main (int argc, char *argv[]) {
+    FILE *input = NULL;
+    table = ht_create(1337);
+    struct symbol_s *s = newSymbol("$accel", 123, TYPE_FLOAT);
+    ht_set(table, "$accel", s);
 
-  if (argc==2) {
-    input = fopen (argv[1], "r");
-    file_name = strdup (argv[1]);
-    if (input) {
-      yyin = input;
+    if (argc==2) {
+      input = fopen (argv[1], "r");
+      file_name = strdup (argv[1]);
+      if (input) {
+        yyin = input;
+      }
+      else {
+        fprintf (stderr, "%s: Could not open %s\n", *argv, argv[1]);
+        return 1;
+      }
     }
     else {
-      fprintf (stderr, "%s: Could not open %s\n", *argv, argv[1]);
+      fprintf (stderr, "%s: error: no input file\n", *argv);
       return 1;
     }
+
+  /*    map_init();*/
+    regNum = initTorcsVars();
+
+    yyparse ();
+   /* map_end(); */
+    ht_free( table );
+    free (file_name);
+
+
+    return 0;
   }
-  else {
-    fprintf (stderr, "%s: error: no input file\n", *argv);
-    return 1;
-  }
-
-  map_init();
-  regNum = initTorcsVars();
-  
-  yyparse ();
-  map_end();
-
-  free (file_name);
-
-
-  return 0;
-}

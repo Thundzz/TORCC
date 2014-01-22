@@ -1,0 +1,7 @@
+Ce repertoire peut etre placé n'importe ou. 
+Il permet de compiler le robot dont le code est généré par votre compilateur. Le fichier que vous devez generer 
+doit s'appeler drive.ll et definir une fonction drive. L'exemple fourni illustre cette fonction avec un pilote
+simple.
+drive.input peut etre le fichier d'input que vous pourriez donner a votre compilateur. drive.ll est celui qui doit etre produit dans ce cas. 
+Le fichier généré enseirbot.so doit ensuite etre placé dans le repertoire lib/torcs/driver/enseirbot/enseirbot.so
+chez vous (en fonction de l'installation de torcs). 
