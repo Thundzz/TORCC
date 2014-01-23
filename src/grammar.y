@@ -372,6 +372,7 @@ else
 
 $$ -> code = newString(buffer);
 $$ -> regNum = regNum;
+regNum ++ ;
 free($1);
 free($3);
 
