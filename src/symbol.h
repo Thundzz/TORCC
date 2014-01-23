@@ -26,4 +26,7 @@ struct symbol_s * newSymbol(char * name, int reg, stype type);
 
 void freeSymbol(struct symbol_s * s);
 
+int isPtr(struct symbol_s * );
+int isArray(struct symbol_s * );
+
 #endif

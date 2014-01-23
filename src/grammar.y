@@ -68,6 +68,7 @@
     int nat;
     struct symbol_s * sym;
     struct expression_s * expr;
+    struct argument_expression_list_s * ael;
   }
 
 
@@ -81,9 +82,9 @@
   %token IF ELSE WHILE RETURN FOR
 
   %type <nat> type_name
-  %type <str> compound_statement declarator postfix_expression unary_expression parameter_list multiplicative_expression additive_expression comparison_expression expression_statement statement statement_list
-  %type <expr> primary_expression expression
-
+  %type <str> compound_statement declarator parameter_list additive_expression comparison_expression expression_statement statement statement_list
+  %type <expr> primary_expression expression postfix_expression unary_expression multiplicative_expression 
+  %type <ael> argument_expression_list
 
 
 
@@ -93,27 +94,28 @@
   primary_expression
   : IDENTIFIER { 
     $$ = createExpr();
-    $$->isSymbol= 1;
-    struct symbol_s * s;
-    s = getSymbol($1);
-    $$->type = s->type;
-    $$->regNum = s->regNum;
+    $$->symbol= getSymbol($1);
+    $$->type = $$->symbol->type;
+    $$->isPtr = (isPtr($$->symbol) || isArray($$->symbol)); 
+    $$->regNum = $$->symbol->regNum;
     free($1);
   }
 
   | CONSTANTI {
     $$ = createExpr();
     $$-> type = TYPE_INT;
-    $$->isConstant = 1;
-    $$->intConstVal = atoi($1);
+    sprintf(buffer, "\t%%r%d = add i32 0, %d \n", regNum, atoi($1));
+    $$->code = newString(buffer);
+    $$->regNum = regNum++;
     free($1); 
   }
 
   | CONSTANTF {
    $$ = createExpr();
    $$-> type = TYPE_FLOAT;
-   $$->isConstant = 1;
-   $$->floatConstVal = atof($1);
+   sprintf(buffer, "\t%%r%d = fadd float 0, %f \n", regNum, atof($1));
+   $$->code = newString(buffer);
+   $$->regNum = regNum++;
    free($1); 
  }
 
@@ -123,7 +125,7 @@
    struct symbol_s * s;
    s = getSymbol($1);
    $$->regNum = regNum;
-   sprintf(buffer, "\t %%r%d = call %s @%s()\n", regNum++, typeToLLVM(s->type) ,s->name);
+   sprintf(buffer, "\t%%r%d = call %s @%s()\n", regNum++, typeToLLVM(s->type) ,s->name);
    $$-> code = newString(buffer);
    free($1);
   //TODO : Ajouter la déclaration de la fonction  à la fin du fichier.
@@ -133,18 +135,27 @@
    $$ = createExpr();
    struct symbol_s * s = getSymbol($1);
    $$->regNum = s->regNum;
+   $$->isPtr = (isPtr(s) || isArray(s)); 
    switch(s->type)
    {
     case TYPE_INT:
-    sprintf(buffer, "\t %%r%d = add i32 1, %%r%d \n", regNum, s->regNum);
+    sprintf(buffer, "\t%%r%d = add i32 1, %%r%d \n", regNum, s->regNum);
     break;
     case TYPE_FLOAT:
-    sprintf(buffer, "\t %%r%d = fadd f32 1, %%r%d \n", regNum, s->regNum);
+    if(!isPtr(s))
+    {
+      sprintf(buffer, "\t%%r%d = fadd float 1, %%r%d \n", regNum, s->regNum);
+    }
+    else
+    {
+      sprintf(buffer, "\t%%r%d = add i32 1, %%r%d \n", regNum, s->regNum);      
+    }
     break;
     default:
     sprintf(error, "Identifier %s has invalid type for incrementation.", s->name);
     reportError();
   } 
+  $$->symbol = NULL;
   s->regNum = regNum++;
   $$->code = newString(buffer);
   free($1);
@@ -153,48 +164,218 @@
   $$ = createExpr();
   struct symbol_s * s = getSymbol($1);
   $$->regNum = s->regNum;
+  $$->isPtr = (isPtr(s) || isArray(s)); 
   switch(s->type)
   {
     case TYPE_INT:
-    sprintf(buffer, "\t %%r%d = sub i32 %%r%d, 1 \n", regNum, s->regNum);
+    sprintf(buffer, "\t%%r%d = sub i32 %%r%d, 1 \n", regNum, s->regNum);
     break;
     case TYPE_FLOAT:
-    sprintf(buffer, "\t %%r%d = fsub f32 %%r%d, 1 \n", regNum, s->regNum);
+    if(!isPtr(s))
+    {
+      sprintf(buffer, "\t%%r%d = fsub float %%r%d, 1 \n", regNum, s->regNum);
+    }
+    else
+    {
+      sprintf(buffer, "\t%%r%d = sub i32 %%r%d, 1 \n", regNum, s->regNum);
+    }
     break;
     default:
     sprintf(error, "Identifier %s has invalid type for decrementation.", s->name);
     reportError();
   } 
   s->regNum = regNum++;
+  $$->symbol = NULL;
   $$->code = newString(buffer);
   free($1);
 }
 ;
 
+
 postfix_expression
-  : primary_expression {/*$$ = $1;*/}
-| postfix_expression '[' expression ']' 
+: primary_expression {$$ = $1; }
+| postfix_expression '[' expression ']'  {
+
+  $$ = createExpr();
+  if(! ($1->isPtr))
+  {
+    sprintf(error, "Trying to reach something that is not a pointer or an array.");
+    reportError();
+  }
+  else
+  {
+    sprintf(buffer, "\t%%r%d = load %s* $1 !ind\n\t!ind = !{i32 %%r%d}",
+      regNum, typeToLLVM($1->type), $3->regNum );
+    $$->code = appendString(concatString($1->code, $3->code), buffer);
+    $$->regNum= regNum ++;
+    $$->type =  $1-> type;
+  }
+  free ($1);
+  free ($3);
+} 
 ;
 
 argument_expression_list
-: expression 
-| argument_expression_list ',' expression
+: expression  { $$ = createArgExprList($1) ;}
+| argument_expression_list ',' expression {$$ = $1; appendArgExprList($$, $3);}
 ;
 
 unary_expression
-: postfix_expression {$$ = $1; }
-| INC_OP unary_expression {}
-| DEC_OP unary_expression {}
-| unary_operator unary_expression {}
+: postfix_expression { $$ = $1; }
+| INC_OP unary_expression { 
+  if ($2->symbol == NULL)
+  {
+    sprintf(error,"Expression is not assignable");
+    reportError();
+  }
+  else{
+   $$ = createExpr();
+   struct symbol_s * s = $2->symbol ;
+   $$->regNum = s->regNum;
+   $$->isPtr = (isPtr(s) || isArray(s)); 
+   switch(s->type)
+   {
+    case TYPE_INT:
+    sprintf(buffer, "\t%%r%d = add i32 1, %%r%d \n", regNum, s->regNum);
+    break;
+    case TYPE_FLOAT:
+    if(!isPtr(s))
+    {
+      sprintf(buffer, "\t%%r%d = fadd float 1, %%r%d \n", regNum, s->regNum);
+    }
+    else
+    {
+      sprintf(buffer, "\t%%r%d = add i32 1, %%r%d \n", regNum, s->regNum);      
+    }
+    break;
+    default:
+    sprintf(error, "Identifier %s has invalid type for incrementation.", s->name);
+    reportError();
+  } 
+  $$->symbol = s;
+  s->regNum = regNum;
+  $$->regNum = regNum++;
+
+  $$->code = newString(buffer);
+  free($2);
+}
+}
+| DEC_OP unary_expression {
+  if ($2->symbol == NULL)
+  {
+    sprintf(error,"Expression is not assignable");
+    reportError();
+  }
+  else{
+   $$ = createExpr();
+   struct symbol_s * s = $2->symbol;
+   $$->regNum = s->regNum;
+   $$->isPtr = (isPtr(s) || isArray(s)); 
+   switch(s->type)
+   {
+    case TYPE_INT:
+    sprintf(buffer, "\t%%r%d = sub i32 1, %%r%d \n", regNum, s->regNum);
+    break;
+    case TYPE_FLOAT:
+    if(!isPtr(s))
+    {
+      sprintf(buffer, "\t%%r%d = fsub float %%r%d, 1 \n", regNum, s->regNum);
+    }
+    else
+    {
+      sprintf(buffer, "\t%%r%d = sub i32 %%r%d, 1 \n", regNum, s->regNum);      
+    }
+    break;
+    default:
+    sprintf(error, "Identifier %s has invalid type for decrementation.", s->name);
+    reportError();
+  } 
+  $$->symbol = s;
+  s->regNum = regNum;
+  $$->regNum = regNum++;
+
+  $$->code = newString(buffer);
+  free($2);
+}
+}
+| unary_operator unary_expression {
+  $$ = createExpr();
+  if($2->isPtr)
+  {
+    sprintf(error, "Unary operator - is forbidden for pointer expressions.");
+  }
+  switch($2->type)
+  {
+    case TYPE_INT:
+    sprintf(buffer, "\t%%r%d = sub i32 0, %%r%d \n", regNum, $2->regNum);
+    break;
+    case TYPE_FLOAT:
+    sprintf(buffer, "\t%%r%d = fsub float 0, %%r%d \n", regNum, $2->regNum);
+    break;
+    default:
+    sprintf(error, "void or undef'd type-expression's opposite cannot be computed.");
+    reportError();
+    break;
+  }
+  $$->regNum = regNum++;
+  $$->type = $2->type;
+  $$->code = appendString($2->code, buffer);
+  free($2);
+}
 ;
 
 unary_operator
-: '-'
+: '-' 
 ;
 
 multiplicative_expression
-: unary_expression {$$ = $1;}
-| multiplicative_expression '*' unary_expression
+: unary_expression { $$ = $1;}
+| multiplicative_expression '*' unary_expression {
+  $$ = createExpr();
+  char * operation;
+  char * type;
+  int result = regNum ++;
+  int tmp = regNum;
+  struct expression_s *floatingPoint, *i32;
+  if ($1->type == TYPE_FLOAT && $3->type == TYPE_FLOAT)
+  {
+   operation = "fmul";
+   $$ -> type = TYPE_FLOAT;
+   type = "float";
+   sprintf(buffer, "\t%%r%d = %s %s %%r%d, %%r%d \n", result, operation, type , $1->regNum, $3->regNum);
+ }
+ else if ($1->type == TYPE_INT && $3->type == TYPE_INT)
+ {
+  operation = "mul";
+  $$ -> type = TYPE_INT;
+  type = "i32";
+  sprintf(buffer, "\t%%r%d = %s %s %%r%d, %%r%d \n", result, operation, type , $1->regNum, $3->regNum);
+}
+else 
+{
+  if ($1 ->type == TYPE_FLOAT)
+  {
+    floatingPoint = $1;
+    i32 = $3;
+  }
+  else if ($3 ->type == TYPE_FLOAT)
+  {
+    floatingPoint = $3;
+    i32 = $1;
+  }
+  operation = "fmul";
+  $$ -> type = TYPE_FLOAT;
+  type = "float";
+  sprintf(buffer, "\t%%r%d = sitofp i32 %%r%d to float  \n"
+    "\t%%r%d = %s %s %%r%d, %%r%d \n", tmp , i32->regNum, result, operation, type , tmp, floatingPoint->regNum);
+}
+
+$$ -> code = newString(buffer);
+$$ -> regNum = regNum;
+free($1);
+free($3);
+
+}
 | multiplicative_expression '/' unary_expression
 ;
 
@@ -424,7 +605,7 @@ expression
    /* map_end(); */
     ht_free( table );
     free (file_name);
-
+    //yylex_destroy( yyscanner ));
 
     return 0;
   }

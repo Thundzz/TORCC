@@ -95,6 +95,8 @@ int map_get_mode(char * x){
   else return v->mode;
 }
 
+
+
 struct var * map_getOrCreateVar(char *x)
 {
    int pos = get_position(x);

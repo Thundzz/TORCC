@@ -30,13 +30,13 @@ char * typeToLLVM (int CType)
 {
   switch(CType){
     case TYPE_INT:
-    return "i32";
+    return (char *) "i32";
     break;
     case TYPE_VOID:
-    return "void";
+    return (char *) "void";
     break;
     case TYPE_FLOAT:
-    return "float";
+    return (char *) "float";
     break;
     default:
     fprintf(stderr, "Type : %d  \n", CType);
@@ -60,7 +60,7 @@ void initData()
    */
   int i = 1 ;
   struct TorcsVar * var= rdWrVars;
-  initVar (var, "$accel", TYPE_FLOAT, "getelementptr %struct.tCarCtrl* %ctrl, i32 0, i32 1", i );
+  initVar (var, (char *) "$accel", TYPE_FLOAT, (char *) "getelementptr %struct.tCarCtrl* %ctrl, i32 0, i32 1", i );
   i ++;
   var ++ ;
 
@@ -104,7 +104,7 @@ char * getLLVMVarLoading()
 {
   int i1, i2;
   struct TorcsVar * var;  
-  char * buff = malloc (VARNUM * LINELENGTH * sizeof(char));
+  char * buff = (char *) malloc (VARNUM * LINELENGTH * sizeof(char));
   if( buff == NULL)
   {
     perror("Error while creating LLVM pointers for TORCS variables");
@@ -136,7 +136,7 @@ char * getLLVMVarStoring()
 {
   int i;
   struct TorcsVar * var;  
-  char * buff = malloc (RDWRVARNUM * LINELENGTH * sizeof(char));
+  char * buff = (char *) malloc (RDWRVARNUM * LINELENGTH * sizeof(char));
   if( buff == NULL)
   {
     perror("Error while creating LLVM pointers for TORCS variables");
