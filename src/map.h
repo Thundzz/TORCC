@@ -2,12 +2,13 @@
 #define MAP_H
 
 /* Constants Declaration */
+#include "type.h"
+
 
 #define MAX_VAR 1000
 
 #define VAL_UNDEF 0
 
-typedef enum {TYPE_UNDEF, TYPE_INT, TYPE_FLOAT, TYPE_VOID} idType;
 
 typedef enum {MODE_RDONLY, MODE_RDWR} idMode;
 

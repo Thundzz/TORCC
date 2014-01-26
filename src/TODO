@@ -1,0 +1,7 @@
+faire en sorte qu'une fonction puisse s'appeler elle-même
+
+IF / IF-ELSE :
+
+utiliser la fonction llvm phi pour que chaque variable sur laquelle un effet de bord est fait dans une clause soit associé au registre de la bonne clause. -> ajout d'une liste d'association symbole-registre dans les expressions.
+
+INDIQUER LES LIGNES DES WARNINGS / FAIRE UNE FONCTION WARNING

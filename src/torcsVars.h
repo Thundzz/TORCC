@@ -5,7 +5,6 @@
 /* Function prototypes */
 
 int initTorcsVars ();
-char * typeToLLVM (int CType);
 
 
 char * getLLVMVarLoading();

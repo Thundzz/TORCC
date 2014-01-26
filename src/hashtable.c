@@ -11,7 +11,7 @@
 
 #include <string.h>
 
-
+int yyerror (char *s);
 
 
 struct entry_s {
@@ -127,7 +127,7 @@ void ht_set( hashtable_t *hashtable, char *key, struct symbol_s *value ) {
 
 /* There's already a pair. Let's replace that string. */
 	if( next != NULL && next->key != NULL && strcmp( key, next->key ) == 0 ) {
-
+		//TODO yyerror ("redefinition");
 		free( next->value );
 		next->value = value;
 
@@ -172,25 +172,28 @@ struct symbol_s *ht_get( hashtable_t *hashtable, char *key ) {
 	}
 }
 
-void ht_entry_free(entry_t * e)
+void ht_entry_free(entry_t * e, int freeSymbols)
 {
 	if(e == NULL)
 		return;
 	else
 	{
-		ht_entry_free(e->next);
+		ht_entry_free(e->next, freeSymbols);
 	}
-	freeSymbol(e->value);
+	if (freeSymbols)
+	{
+		freeSymbol(e->value);
+	}
 	free(e->key);
 	free(e);
 }
 
-void ht_free(hashtable_t * hashtable)
+void ht_free(hashtable_t * hashtable, int freeSymbols)
 {
 	int i;
 	for (i = 0; i < hashtable-> size; ++i)
 	{
-		ht_entry_free(hashtable->table[i]);
+		ht_entry_free(hashtable->table[i], freeSymbols);
 	}
 	free (hashtable->table);
 	free(hashtable);

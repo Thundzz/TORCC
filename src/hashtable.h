@@ -16,7 +16,7 @@ entry_t *ht_newpair( char *key,struct symbol_s *value );
 void ht_set( hashtable_t *hashtable, char *key, struct symbol_s *value );
 
 struct symbol_s *ht_get( hashtable_t *hashtable, char *key );
-void ht_free(hashtable_t * hashtable);
+void ht_free(hashtable_t * hashtable, int freeSymbols);
 
 
 

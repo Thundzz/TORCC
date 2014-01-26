@@ -5,7 +5,7 @@ CC=gcc
 
 all:parse
 
-parse:y.tab.c lex.yy.c map.o torcsVars.o hashtable.o symbol.o expression.o str.o
+parse:y.tab.c lex.yy.c torcsVars.o hashtable.o symbol.o expression.o str.o util.o environment.o map.o statement.o
 	$(CC) $(CFLAGS) -o $@ $^
 
 y.tab.c:grammar.y 

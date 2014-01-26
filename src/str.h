@@ -14,6 +14,10 @@ string * newString(char * c);
 string * concatString(string * left, string * right);
 string * appendString(string * left, char * right);
 
+
+string * appendBranch(string * left, int regCond , int labelTrue, int labelFalse );
+string * appendLabel(string * left, int label);
+
 void destroyString(string * s);
 void printString(FILE * file, const string * str );
 

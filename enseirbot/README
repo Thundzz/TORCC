@@ -5,3 +5,13 @@ simple.
 drive.input peut etre le fichier d'input que vous pourriez donner a votre compilateur. drive.ll est celui qui doit etre produit dans ce cas. 
 Le fichier généré enseirbot.so doit ensuite etre placé dans le repertoire lib/torcs/driver/enseirbot/enseirbot.so
 chez vous (en fonction de l'installation de torcs). 
+
+Notes :
+
+La grammaire est telle que le type complet d'une fonction n'est connu par le compilateur qu'une fois qu'il a analysé son corps. un code du type
+void f()
+{
+	f();
+}
+génère donc une erreur "unknown identifier f".
+Pour utiliser un appel récursif, on verra.

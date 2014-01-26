@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <errno.h>
 
+#define BUFSIZE 1024
 
 typedef struct String
 {
@@ -111,5 +112,28 @@ void printString(FILE * file, const string * str )
 	{
 		printString(file, str->left );
 		printString(file, str->right );
+	}
+}
+
+
+string * appendLabel(string * left, int label)
+{
+	char  buffer[BUFSIZE];
+	sprintf(buffer, "\tl%d : \n", label);
+	return appendString(left, buffer);
+}
+
+string * appendBranch(string * left, int regCond , int labelTrue, int labelFalse )
+{
+	char  buffer[BUFSIZE];
+	if (regCond != 0)
+	{
+		sprintf(buffer , "\tbr i1 %%r%d, label %%l%d, label %%l%d\n", regCond, labelTrue, labelFalse);
+		return appendString(left, buffer);
+	}
+	else
+	{
+		sprintf(buffer , "\tbr label %%l%d\n", labelTrue);
+		return appendString(left, buffer);	
 	}
 }

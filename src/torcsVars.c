@@ -3,6 +3,7 @@
 #include <string.h>
 #include <errno.h>
 #include "map.h"
+#include "util.h"
 
 
 
@@ -14,7 +15,7 @@
 struct TorcsVar
 {
   char * _torcCName;
-  idType _type;
+  stype _type;
   char * _LLVMLoad;
   int _LLVMRegNum;
 };
@@ -26,26 +27,9 @@ struct TorcsVar rdWrVars [RDWRVARNUM];
 
 
 
-char * typeToLLVM (int CType)
-{
-  switch(CType){
-    case TYPE_INT:
-    return (char *) "i32";
-    break;
-    case TYPE_VOID:
-    return (char *) "void";
-    break;
-    case TYPE_FLOAT:
-    return (char *) "float";
-    break;
-    default:
-    fprintf(stderr, "Type : %d  \n", CType);
-    perror ("Wrong type given somewhere.");
-    exit(EXIT_FAILURE);
-  }
-}
 
-void initVar(struct TorcsVar * var,char * name, idType type, char * load, int regNum )
+
+void initVar(struct TorcsVar * var,char * name, stype type, char * load, int regNum )
 {
   var->_torcCName = name;
   var->_type = type;
