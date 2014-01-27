@@ -9,6 +9,7 @@
 typedef struct String
 {
 	char * s;
+	int bleft, bright;
 	string * left;
 	string * right;
 
@@ -36,6 +37,7 @@ string * allocString()
 	}
 	s->s = NULL;
 	s->left =  s-> right = NULL;
+	s->bright = s->bleft = 1;
 	return s;
 }
 
@@ -110,11 +112,38 @@ void printString(FILE * file, const string * str )
 	}
 	else
 	{
-		printString(file, str->left );
-		printString(file, str->right );
+		if(str->bleft)
+			printString(file, str->left );
+		if(str->bright)
+			printString(file, str->right );
 	}
 }
 
+void hideLeftString(string *str)
+{
+	str->bleft = 0;
+}
+void hideRightString(string *str)
+{
+	str->bright = 0;
+}
+
+void printWholeString(FILE * file, const string * str )
+{
+	if (str == NULL)
+	{
+		return;
+	}
+	if(isLeaf(str))
+	{
+		fputs(str->s, file);
+	}
+	else
+	{
+		printWholeString(file, str->left );
+		printWholeString(file, str->right );
+	}
+}
 
 string * appendLabel(string * left, int label)
 {

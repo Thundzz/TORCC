@@ -73,14 +73,16 @@ struct expression_s * createComplexExpr(char * operation, char * prefixI, char *
 		s -> type = TYPE_FLOAT;
 		type = (char*)"float";
 		sprintf(buffer, "\t%%r%d = %s%s %s %%r%d, %%r%d \n", (*regNum), prefixF, operation, type , left->regNum, right->regNum);
-		s -> code = newString(buffer);
+		s -> code = concatString(left->code, right->code);
+		s -> code = appendString(s->code, buffer);
 	}
 	else if (left->type == TYPE_INT && right->type == TYPE_INT)
 	{
 		s -> type = TYPE_INT;
 		type = (char*)"i32";
 		sprintf(buffer, "\t%%r%d = %s%s %s %%r%d, %%r%d \n", (*regNum), prefixI, operation, type , left->regNum, right->regNum);
-		s -> code = newString(buffer);
+		s -> code = concatString(left->code, right->code);
+		s -> code = appendString(s->code, buffer);
 	}
 	else 
 	{
@@ -99,7 +101,8 @@ struct expression_s * createComplexExpr(char * operation, char * prefixI, char *
 		struct expression_s * converted = convertExpression (TYPE_FLOAT, i32, regNum);
 		sprintf(buffer, "\t%%r%d = %s%s %s %%r%d, %%r%d \n", 
 			(*regNum),prefixF, operation, type , converted->regNum, floatingPoint->regNum);
-		s -> code = appendString(converted->code , buffer);
+		s->code = concatString(floatingPoint->code, converted->code);
+		s -> code = appendString(s->code , buffer);
 	}
 	s -> regNum = *regNum;
 	(*regNum) ++ ;

@@ -1,13 +1,15 @@
 #ifndef TORCSVARS_H
 #define TORCSVARS_H
 
+#include "environment.h"
 
 /* Function prototypes */
 
-int initTorcsVars ();
+int initTorcsVars(struct environment * env);
 
 
-char * getLLVMVarLoading();
-char * getLLVMVarStoring();
+void getLLVMVarLoading(struct environment * env, char bigbuffer[] );
+void getLLVMVarStoring(struct environment * env, char bigbuffer[]);
+void declareFunctionMasks(struct environment * toplevel);
 
 #endif

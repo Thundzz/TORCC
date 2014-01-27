@@ -19,7 +19,10 @@ string * appendBranch(string * left, int regCond , int labelTrue, int labelFalse
 string * appendLabel(string * left, int label);
 
 void destroyString(string * s);
+void hideRightString(string *str);
+void hideLeftString(string *str);
 void printString(FILE * file, const string * str );
+void printWholeString(FILE * file, const string * str );
 
 
 #endif

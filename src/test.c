@@ -6,7 +6,8 @@ int a(int ii, float i)
 void drive ()
 {
   a(1,2);
-  $accel = 1.0;
-  $accel++;
+  $accel *= (4 + $accel++) ;
+  $accel = $x+$y+$z;
+  $accel--;
   $accel > 0;
 }

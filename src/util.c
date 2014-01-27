@@ -4,6 +4,9 @@
 #include "util.h"
 #include "type.h"
 
+char error[1024];
+
+int yyerror (char *s);
 char * strFusion (char * str, char * toAppend)
   {/*
     int newSize = strlen(str) + strlen (toAppend) +1  ;
@@ -28,8 +31,8 @@ char * typeToLLVM (stype CType)
 		return (char *) "float";
 		break;
 		default:
-		fprintf(stderr, "Type : %d  \n", CType);
-		perror ("Wrong type given somewhere.");
+		sprintf(error, "wrong type : %d  \n", CType);
+		yyerror (error);
 		exit(EXIT_FAILURE);
 	}
 }
@@ -47,8 +50,8 @@ char * typeToCType (stype CType)
 		return (char *) "float";
 		break;
 		default:
-		fprintf(stderr, "Type : %d \n", CType);
-		perror ("Wrong type given somewhere.");
+		sprintf(error, "wrong type : %d  \n", CType);
+		yyerror (error);
 		exit(EXIT_FAILURE);
 	}
 }

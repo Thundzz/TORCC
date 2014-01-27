@@ -3,7 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
-
+#include <float.h>
 #include "brutCode.h"
 #include "util.h"
 #include "torcsVars.h"
@@ -18,6 +18,8 @@
 
 #define BUFSIZE 1024
 #define IGNOREDLABEL 0
+
+
 
   char error[BUFSIZE] = "";
   char buffer[BUFSIZE] = "";
@@ -120,7 +122,8 @@
   | CONSTANTF {
     $$ = createExpr();
     $$-> type = TYPE_FLOAT;
-    sprintf(buffer, "\t%%r%d = fadd float 0, %f \n", regNum, atof($1));
+    float f = atof($1);
+    sprintf(buffer, "\t%%r%d = fadd float %.17g, 0.000000 \n", regNum, f);
     $$->code = newString(buffer);
     $$->regNum = regNum++;
     free($1); 
@@ -205,7 +208,7 @@
         case TYPE_FLOAT:
         if(!isPtr(s))
         {
-          sprintf(buffer, "\t%%r%d = fadd float 1, %%r%d \n", regNum, s->regNum);
+          sprintf(buffer, "\t%%r%d = fadd float 1.000000, %%r%d \n", regNum, s->regNum);
         }
         else
         {
@@ -219,6 +222,7 @@
       $$->symbol = NULL;
       s->regNum = regNum++;
       $$->code = newString(buffer);
+      $$->type = s->type;
       free($1);
     }
     | IDENTIFIER DEC_OP {
@@ -234,7 +238,7 @@
         case TYPE_FLOAT:
         if(!isPtr(s))
         {
-          sprintf(buffer, "\t%%r%d = fsub float %%r%d, 1 \n", regNum, s->regNum);
+          sprintf(buffer, "\t%%r%d = fsub float %%r%d, 1.000000 \n", regNum, s->regNum);
         }
         else
         {
@@ -247,6 +251,7 @@
       } 
       s->regNum = regNum++;
       $$->symbol = NULL;
+      $$->type = s->type;
       $$->code = newString(buffer);
       free($1);
     }
@@ -284,7 +289,7 @@
     unary_expression
     : postfix_expression { $$ = $1; }
     | INC_OP unary_expression { 
-      if ($2->symbol == NULL)
+      if ($2->symbol == NULL || !(isWritable($2->symbol)))
       {
         sprintf(error,"Expression is not assignable");
         reportError();
@@ -302,7 +307,7 @@
           case TYPE_FLOAT:
           if(!isPtr(s))
           {
-           sprintf(buffer, "\t%%r%d = fadd float 1, %%r%d \n", regNum, s->regNum);
+           sprintf(buffer, "\t%%r%d = fadd float 1.000000, %%r%d \n", regNum, s->regNum);
          }
          else
          {
@@ -316,13 +321,13 @@
        $$->symbol = s;
        s->regNum = regNum;
        $$->regNum = regNum++;
-
+       $$->type = s->type;
        $$->code = newString(buffer);
        free($2);
      }
    }
    | DEC_OP unary_expression {
-    if ($2->symbol == NULL)
+    if ($2->symbol == NULL || !isWritable($2->symbol))
     {
       sprintf(error,"Expression is not assignable");
       reportError();
@@ -340,7 +345,7 @@
         case TYPE_FLOAT:
         if(!isPtr(s))
         {
-         sprintf(buffer, "\t%%r%d = fsub float %%r%d, 1 \n", regNum, s->regNum);
+         sprintf(buffer, "\t%%r%d = fsub float %%r%d, 1.000000 \n", regNum, s->regNum);
        }
        else
        {
@@ -354,7 +359,7 @@
      $$->symbol = s;
      s->regNum = regNum;
      $$->regNum = regNum++;
-
+     $$->type = s->type;
      $$->code = newString(buffer);
      free($2);
    }
@@ -371,7 +376,7 @@
     sprintf(buffer, "\t%%r%d = sub i32 0, %%r%d \n", regNum, $2->regNum);
     break;
     case TYPE_FLOAT:
-    sprintf(buffer, "\t%%r%d = fsub float 0, %%r%d \n", regNum, $2->regNum);
+    sprintf(buffer, "\t%%r%d = fsub float 0.000000, %%r%d \n", regNum, $2->regNum);
     break;
     default:
     sprintf(error, "void or undef'd type-expression's opposite cannot be computed.");
@@ -646,11 +651,13 @@ declarator
   : block_overture block_underture {$$ = createStatement();}
   | block_overture statement_list block_underture  {
     $$ = createStatement();
+    $$->returns = $2->returns;
     $$->returnType = $2->returnType;
     $$->code = $2->code;
   }
   | block_overture declaration_list statement_list block_underture {
     $$ = createStatement();
+    $$->returns = $3->returns;
     $$->returnType = $3->returnType;
     $$->code = $3->code;
   }
@@ -676,6 +683,7 @@ declaration_list /* aucun code ; referencement dans les tables fait au niveau de
       sprintf(error, "return types inconsistent.\n");
       reportError();
     }
+    $$->returnType = $1->returnType;
     $$ = createStatementList();
     $$->code = concatString($1->code, $2->code);
     $$->returns = ($1->returns || ($$->lastStatementReturns = $2->returns));
@@ -747,23 +755,35 @@ jump_statement // ->returns = 1
 : RETURN ';' {
   $$ = createStatement();
   $$ ->returnType = TYPE_VOID;
-  $$ ->code = newString("\tret void\n");
+  $$->returns = 1; 
+  char bigbuffer[4*BUFSIZE] = "";
+  getLLVMVarStoring(environment , bigbuffer );
+  $$ -> code = appendString ($$->code, bigbuffer);
+  hideRightString($$->code);
+  $$ ->code = appendString($$->code, "\tret void\n");
+
 }
 | RETURN expression ';' {
   $$ = createStatement();
+  $$ ->returns= 1;
   $$ ->returnType = $2->type;
+  char bigbuffer[4*BUFSIZE] = "";
+  getLLVMVarStoring(environment , bigbuffer );
   sprintf(buffer, "\tret %s %%r%d\n", typeToLLVM($2->type), $2->regNum);
-  $$ ->code = newString(buffer);
+  $$ ->code = concatString($2->code, $$->code);
+  $$ ->code = appendString ($$->code , bigbuffer);
+  hideRightString($$->code);
+  $$ ->code = appendString( $$->code,  buffer);
 }
 ;
 
 program
 : external_declaration {
-  printString(stdout, $1);
+  //printString(stdout, $1);
 }
 | program external_declaration
 {
-  printString(stdout, $2); 
+  //printString(stdout, $2); 
 }
 ;
 
@@ -781,6 +801,7 @@ function_definition
     reportError();
   }
   $2->type = $1;
+  /*TODO : verifier la compatibilite du prototype eventuel*/
   setSymbol(environment, $2, $2->name);
 
   sprintf(buffer, "define %s @%s", typeToLLVM($1), $2->name);
@@ -800,16 +821,25 @@ function_definition
     $$ = concatString($$, $2->paramsCode);
   }
 
- // Generation du corps
+
   $$ = appendString($$, "{\n");
-// TODO: Importation des variables de TORCS
+// Importation des variables de TORCS
+  if (strcmp($2->name, "drive") == 0)
+  {
+    char bigbuffer[4*BUFSIZE]= "";
+    getLLVMVarLoading(environment , bigbuffer );
+    $$ = appendString ($$, bigbuffer);
+  }
 
-
+//Generation du corps
   $$ = concatString($$, $3->code);
   if(! ($3->returns))
   {
     if($1 == TYPE_VOID)
     {
+      char bigbuffer[4*BUFSIZE]= "";
+      getLLVMVarStoring(environment , bigbuffer);
+      $$= appendString($$ , bigbuffer);
       $$= appendString($$ ,"\tret void\n");
     }
     else
@@ -820,18 +850,18 @@ function_definition
       $$ = appendString($$, buffer);
     }
   }
+
+  // Enregistrement des variables de TORCS faite dans le return
+
+
   $$ = appendString($$, "}\n");
+  if(strcmp($2->name, "drive") == 0)
+    printWholeString(stdout, $$);
+  else
+    printString(stdout, $$);
+  destroyString($$);
+  freeStatement($3); 
 
-
-
-  //char ctrl[] = "%ctrl = getelementptr %struct.CarElt* %car, i32 0, i32 5";
-  //char * type = typeToLLVM($1);
-  //puts(header);
-  //printf("define %s @drive%s {\n\t%s\n%s%s%s\tret void\n}\n\n", type,  driveParameters, ctrl, getLLVMVarLoading() ,/*$3*/ "" ,  /*getLLVMVarStoring()*/ ""); 
-  //TODO : adapter LLVMVARSTORING pour utiliser la hashtable au lieu de la map
-  //puts(end);
-
-  free($2);free($3); 
 }
 ;
 
@@ -876,9 +906,13 @@ int main (int argc, char *argv[]) {
   }
 
   /*    map_init();*/
-  regNum = initTorcsVars();
+  regNum = initTorcsVars(environment);
+  declareFunctionMasks(environment);
 
+  puts(header);
   yyparse ();
+  puts(end);
+  fputs("Compilation successful.\n", stderr);
   /* map_end(); */
   freeEnvironment( environment , DONTFREESYMBOLS);
   environment = NULL;

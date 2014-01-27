@@ -1,13 +1,75 @@
-Projet TORCC, par Yacine El Jarrari et Guillaume Rincel
+///////////////////////////////////////////////////////////////////////////////////////
+//
+//                   PROJET DE COMPILATION : COMPILATEUR TORCC
+//
+///////////////////////////////////////////////////////////////////////////////////////
 
-Pour compiler le compilateur :
-     make
-Pour compiler un fichier en pseudo-c décrivant une fonction drive donnant simplement une valeur à $accel :
-     ./compile [fichier] [sortie]
-Le fichier test.c, qui définit simplement une fonction drive affectant une valeur à l'accélération, a été utilisé lors de nos tests.
+// Auteurs : Guillaume RINCEL, Yacine EL JARRARI.
+
+
+Prérequis :
+___________________________
+
+Linux, gcc, make, llc (pour compiler le llvm produit)
+
+
+
+Compiler le projet:
+___________________________
+
+Pour compiler le compilateur: 
+
+	> make
+
+Ou:	
+	> make parseman cat
+
+Utiliser le compilateur :
+___________________________
+
+
+Pour lancer le compilateur :
+
+>./compile.sh <input file> <outputfile>
+
+exemple:
+
+>./compile test.c drive.ll
+
+
 
 Notes :
- - Les arguments de la fonction drive sont ignorés et remplacés par les arguments corrects pour la compatibilité avec TORCS.
- - Les définitions des structures de TORCS et les prototypes de fonctions pour les manipuler sont également ajoutées au fichier de sortie quoi qu'il arrive.
- - A l'heure actuelle, le compilateur effectue plus d'opérations que nécessaire : au lieu de stocker directement un valeur dans la case mémoire correspondant à l'accélération, il la stocke dans un registre puis sauve la valeur du registre dans ladite case.
- - Le code actuel du compilateur, suite à un mauvais compromis entre une intention initiale de faire quelque-chose de rigoureux et la nécessité de rendre quelque-chose qui fonctionne sur l'entrée test.c, est en bonne partie inexploitable (en particulier les actions sémantiques dans grammar.y).
+___________________________
+
+Un fichier test.c fourni dans l'archive peut être utilisé comme input du compilateur. Celui-ci est compilé sans erreur, mais il n'est pas recommandé d'utiliser le résultat comme pilote.
+En ce qui concerne le fichier drive.input proposé par le sujet, il provoque un arrêt de la compilation pour des raisons expliquées plus bas.
+
+***********
+
+Par manque de temps, Le compilateur ne traite pas les boucles for, while, et structures de contrôle conditionnelles.
+Afin de les implémenter, il aurait fallu faire remonter d'une expression la liste des symboles sur lesquels ladite expression fait des effets de bord. Puis, à la sortie du branchement conditionnel, utiliser la fonction LLVM phi.
+*********
+
+Dans le fichier d'exemple drive.input fourni dans l'archive du sujet, des fonctions non définies sont présentes 
+(road_angle, car_angle, par exemple). Notre compilateur, ne comble pas l'absence de définition. Nous avons essayé 
+de  "convertir" les appels à ces fonctions en appel aux fonctions LLVM correspondantes, mais encore une fois, par manque de temps, sans succès.  
+*********
+
+De plus, 
+La grammaire est telle que le type complet d'une fonction n'est connu par le compilateur qu'une fois qu'il a analysé son corps. un code du type
+void f()
+{
+f();
+}
+génère donc une erreur "unknown identifier f".
+Pour utiliser un appel récursif, il faut déclarer le prototype de la fonction avant sa définition.
+Cependant, un prototype de fonction sans définition de la fonction dans le même fichier n'engendre pas de déclaration de cette fonction dans le fichier LLVM en sortie.
+
+
+*********
+
+Nous oublions probablement d'autres incomplétudes, comme de nombreuses fuites de mémoire.
+
+ 
+
+
