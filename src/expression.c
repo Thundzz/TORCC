@@ -6,6 +6,9 @@
 
 #define BUFSIZE 1024
 
+/*HELLO THIS IS A MODIFICATION*/
+
+
 
 
 void initExpr(struct expression_s * s)
@@ -54,7 +57,7 @@ void appendArgExprList(struct argument_expression_list_s * l, struct expression_
 	}
 	if (l->next== NULL)
 	{
-		l->next = createArgExprList(e);  
+		l->next = createArgExprList(e);
 	}
 	else
 	{
@@ -84,7 +87,7 @@ struct expression_s * createComplexExpr(char * operation, char * prefixI, char *
 		s -> code = concatString(left->code, right->code);
 		s -> code = appendString(s->code, buffer);
 	}
-	else 
+	else
 	{
 		if (left ->type == TYPE_FLOAT)
 		{
@@ -99,7 +102,7 @@ struct expression_s * createComplexExpr(char * operation, char * prefixI, char *
 		s -> type = TYPE_FLOAT;
 		type = (char*)"float";
 		struct expression_s * converted = convertExpression (TYPE_FLOAT, i32, regNum);
-		sprintf(buffer, "\t%%r%d = %s%s %s %%r%d, %%r%d \n", 
+		sprintf(buffer, "\t%%r%d = %s%s %s %%r%d, %%r%d \n",
 			(*regNum),prefixF, operation, type , converted->regNum, floatingPoint->regNum);
 		s->code = concatString(floatingPoint->code, converted->code);
 		s -> code = appendString(s->code , buffer);
@@ -147,7 +150,7 @@ struct expression_s * convertExpression(stype dest, struct expression_s * expr, 
 	{
 		return expr;
 	}
-	else 
+	else
 	{
 		destination = correctPreOrPostFix(dest);
 		origin = correctPreOrPostFix(expr->type);
@@ -168,7 +171,7 @@ struct expression_s * createFinalExpr(struct expression_s * left, char assignOp,
 	struct expression_s *s = NULL;
 	switch (assignOp)
 	{
-		case '+':	
+		case '+':
 		s = createMulExpr((char *) "add", left, tmp, regNum);
 		break;
 		case '-':
